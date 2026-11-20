@@ -40,7 +40,7 @@ export const LoginScreen: React.FC = () => {
 
   const handleBirthDateChange = (val: string) => {
     setErrorMessage(null);
-    setChildBirthDate(val);
+    setChildBirthDate(val.replace(/\D/g, '').slice(0, 8));
   };
 
   const handleParentSubmit = (e: React.FormEvent) => {
@@ -50,7 +50,7 @@ export const LoginScreen: React.FC = () => {
       return;
     }
     if (!childBirthDate.trim()) {
-      setErrorMessage('Пожалуйста, укажите дату рождения ребенка (пароль)');
+      setErrorMessage('Пожалуйста, введите дату рождения ребенка (8 цифр без точек)');
       return;
     }
 
@@ -181,7 +181,7 @@ export const LoginScreen: React.FC = () => {
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center justify-between">
                   <span>Дата рождения ребенка</span>
-                  <span className="text-[10px] text-purple-700 font-normal">Ваш пароль</span>
+                  <span className="text-[10px] text-purple-700 font-normal">Ваш пароль (8 цифр)</span>
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
@@ -189,10 +189,13 @@ export const LoginScreen: React.FC = () => {
                   </div>
                   <input
                     type={showPassword ? 'text' : 'password'}
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    autoComplete="off"
                     value={childBirthDate}
                     onChange={(e) => handleBirthDateChange(e.target.value)}
-                    placeholder="ДД.ММ.ГГГГ (например, 14.05.2016)"
-                    className="w-full pl-10 pr-10 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-semibold text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#4e1984] focus:border-transparent transition"
+                    placeholder="ДДММГГГГ (например, 14052016)"
+                    className="w-full pl-10 pr-10 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-semibold tracking-wider text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#4e1984] focus:border-transparent transition"
                   />
                   <button
                     type="button"
@@ -208,7 +211,7 @@ export const LoginScreen: React.FC = () => {
               <div className="p-3 bg-purple-50/80 rounded-2xl border border-purple-100 text-[11px] text-purple-900 flex items-start gap-2">
                 <HelpCircle className="w-4 h-4 text-purple-600 shrink-0 mt-0.5" />
                 <div className="leading-snug">
-                  Для входа используется номер телефона из договора и дата рождения вашего ребенка в формате <strong>ДД.ММ.ГГГГ</strong> (например: <strong>14.05.2016</strong>).
+                  Для входа используется номер телефона из договора и дата рождения вашего ребенка — <strong>только 8 цифр без точек</strong> в формате <strong>ДДММГГГГ</strong> (например: <strong>14052016</strong>).
                 </div>
               </div>
 

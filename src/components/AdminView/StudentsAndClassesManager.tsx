@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import * as XLSX from 'xlsx';
-import { useApp } from '../../context/AppContext';
+import { useApp, normalizeDate } from '../../context/AppContext';
 import type { Student, StaffMember } from '../../types';
 import {
   Users,
@@ -57,12 +57,13 @@ export const StudentsAndClassesManager: React.FC = () => {
   const filteredStudents = students.filter((s) => {
     const matchStage = selectedStageId === 'all' || s.stageId === selectedStageId;
     const q = searchQuery.toLowerCase().trim();
+    const qDigits = q.replace(/\D/g, '');
     const matchQuery =
       !q ||
       s.name.toLowerCase().includes(q) ||
       s.parentName?.toLowerCase().includes(q) ||
       s.parentPhone?.includes(q) ||
-      s.birthDate?.includes(q);
+      (qDigits.length > 0 && normalizeDate(s.birthDate || '').includes(qDigits));
     return matchStage && matchQuery;
   });
 
@@ -82,10 +83,10 @@ export const StudentsAndClassesManager: React.FC = () => {
   const handleDownloadTemplate = () => {
     const wb = XLSX.utils.book_new();
     const rows = [
-      ['Класс/Ступень', 'ФИО ученика', 'Дата рождения (пароль)', 'ФИО родителя', 'Телефон родителя (логин)', 'Особенности питания / аллергии'],
-      ['Ступень 1 «Первооткрыватели»', 'Иванов Иван Алексеевич', '15.04.2016', 'Иванова Мария Сергеевна', '+7 (903) 123-45-67', 'Без ограничений'],
-      ['Ступень 2 «Исследователи»', 'Петрова Анна Дмитриевна', '22.09.2015', 'Петров Дмитрий Олегович', '+7 (905) 987-65-43', 'Без лактозы (непереносимость молока)'],
-      ['Стартеры (0 класс)', 'Смирнов Артем Максимович', '08.11.2018', 'Смирнова Ольга Викторовна', '+7 (910) 555-11-22', 'Аллергия на орехи и мед']
+      ['Класс/Ступень', 'ФИО ученика', 'Дата рождения / пароль (ДДММГГГГ)', 'ФИО родителя', 'Телефон родителя (логин)', 'Особенности питания / аллергии'],
+      ['Ступень 1 «Первооткрыватели»', 'Иванов Иван Алексеевич', '15042016', 'Иванова Мария Сергеевна', '+7 (903) 123-45-67', 'Без ограничений'],
+      ['Ступень 2 «Исследователи»', 'Петрова Анна Дмитриевна', '22092015', 'Петров Дмитрий Олегович', '+7 (905) 987-65-43', 'Без лактозы (непереносимость молока)'],
+      ['Стартеры (0 класс)', 'Смирнов Артем Максимович', '08112018', 'Смирнова Ольга Викторовна', '+7 (910) 555-11-22', 'Аллергия на орехи и мед']
     ];
     const ws = XLSX.utils.aoa_to_sheet(rows);
     XLSX.utils.book_append_sheet(wb, ws, 'Список_учеников');
@@ -102,7 +103,7 @@ export const StudentsAndClassesManager: React.FC = () => {
       const buffer = await file.arrayBuffer();
       const wb = XLSX.read(buffer, { type: 'array' });
       const firstSheet = wb.Sheets[wb.SheetNames[0]];
-      const rawData = XLSX.utils.sheet_to_json<Record<string, any>>(firstSheet);
+      const rawData = XLSX.utils.sheet_to_json<Record<string, any>>(firstSheet, { raw: false });
 
       if (!rawData || rawData.length === 0) {
         addNotification('Файл пустой или не содержит строк с данными.');
@@ -113,7 +114,14 @@ export const StudentsAndClassesManager: React.FC = () => {
         // Detect fields dynamically
         const name = row['ФИО ученика'] || row['ФИО'] || row['Ученик'] || row['Student'] || `Ученик ${idx + 1}`;
         const rawStage = row['Класс/Ступень'] || row['Класс'] || row['Ступень'] || 'Ступень познания 1 «Первооткрыватели»';
-        const birthDate = row['Дата рождения (пароль)'] || row['Дата рождения'] || row['ДР'] || row['BirthDate'] || '01.01.2016';
+        const rawBirthDate =
+          row['Дата рождения / пароль (ДДММГГГГ)'] ||
+          row['Дата рождения (пароль)'] ||
+          row['Дата рождения'] ||
+          row['ДР'] ||
+          row['BirthDate'] ||
+          '01012016';
+        const birthDate = normalizeDate(String(rawBirthDate));
         const parentName = row['ФИО родителя'] || row['Родитель'] || row['Parent'] || 'Родитель';
         const parentPhone = row['Телефон родителя (логин)'] || row['Телефон'] || row['Phone'] || '+7 (900) 000-00-00';
         const dietaryNeeds = row['Особенности питания / аллергии'] || row['Питание'] || row['Аллергии'] || 'Общий стол';
@@ -186,8 +194,8 @@ export const StudentsAndClassesManager: React.FC = () => {
       addNotification('Укажите ФИО ученика');
       return;
     }
-    if (!editingStudent?.birthDate?.trim()) {
-      addNotification('Укажите дату рождения (пароль родителя)');
+    if (!editingStudent?.birthDate || !normalizeDate(editingStudent.birthDate)) {
+      addNotification('Укажите дату рождения (8 цифр — пароль родителя)');
       return;
     }
     if (!editingStudent?.parentPhone?.trim()) {
@@ -203,7 +211,7 @@ export const StudentsAndClassesManager: React.FC = () => {
       name: editingStudent.name.trim(),
       class: fullClass,
       stageId: matchedStage.id,
-      birthDate: editingStudent.birthDate.trim(),
+      birthDate: normalizeDate(editingStudent.birthDate),
       parentName: editingStudent.parentName?.trim() || 'Родитель',
       parentPhone: editingStudent.parentPhone.trim(),
       dietaryNeeds: editingStudent.dietaryNeeds?.trim() || 'Общий стол',
@@ -246,7 +254,7 @@ export const StudentsAndClassesManager: React.FC = () => {
       text += `${i + 1}. Ученик: ${st.name} (${st.class})\n`;
       text += `   Родитель: ${st.parentName}\n`;
       text += `   📱 Логин (телефон): ${st.parentPhone}\n`;
-      text += `   🔑 Пароль (дата рождения): ${st.birthDate || 'не указана'}\n\n`;
+      text += `   🔑 Пароль (8 цифр): ${normalizeDate(st.birthDate || '') || 'не указан'}\n\n`;
     });
 
     return text;
@@ -315,7 +323,7 @@ export const StudentsAndClassesManager: React.FC = () => {
                 id: `s_${Date.now()}`,
                 name: '',
                 stageId: selectedStageId === 'all' ? 'stage_1' : selectedStageId,
-                birthDate: '15.05.2016',
+                birthDate: '',
                 parentName: '',
                 parentPhone: '+7 (9',
                 dietaryNeeds: 'Общий стол'
@@ -446,7 +454,8 @@ export const StudentsAndClassesManager: React.FC = () => {
                     <div className="flex items-center gap-1 shrink-0">
                       <button
                         onClick={() => {
-                          const info = `Ученик: ${st.name}\nРодитель: ${st.parentName}\nЛогин: ${st.parentPhone}\nПароль: ${st.birthDate || '—'}`;
+                          const pass = normalizeDate(st.birthDate || '') || '—';
+                          const info = `Ученик: ${st.name}\nРодитель: ${st.parentName}\nЛогин: ${st.parentPhone}\nПароль (8 цифр): ${pass}`;
                           copyToClipboard(info, `Доступы для ${st.name} скопированы!`);
                         }}
                         className="p-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-800 transition"
@@ -458,7 +467,10 @@ export const StudentsAndClassesManager: React.FC = () => {
                       <button
                         onClick={() => {
                           setIsNewStudent(false);
-                          setEditingStudent(st);
+                          setEditingStudent({
+                            ...st,
+                            birthDate: normalizeDate(st.birthDate || '')
+                          });
                         }}
                         className="p-1.5 rounded-lg bg-purple-50 hover:bg-purple-100 text-purple-700 transition"
                         title="Редактировать ученика"
@@ -495,10 +507,10 @@ export const StudentsAndClassesManager: React.FC = () => {
                     <div className="bg-amber-50/80 p-2 rounded-xl border border-amber-200/60 flex flex-col">
                       <span className="text-[10px] font-bold text-amber-900 flex items-center gap-1">
                         <Calendar className="w-3 h-3 text-amber-600" />
-                        <span>Пароль (Д/Р):</span>
+                        <span>Пароль (8 цифр):</span>
                       </span>
                       <strong className="text-amber-950 font-mono text-[11px] truncate mt-0.5">
-                        {st.birthDate || 'не указана'}
+                        {normalizeDate(st.birthDate || '') || 'не указан'}
                       </strong>
                     </div>
                   </div>
@@ -641,13 +653,19 @@ export const StudentsAndClassesManager: React.FC = () => {
               <div>
                 <label className="block font-bold text-slate-700 mb-1 flex items-center justify-between">
                   <span>Дата рождения ребенка (Пароль родителя) *</span>
-                  <span className="text-purple-700 font-normal">Формат: ДД.ММ.ГГГГ</span>
+                  <span className="text-purple-700 font-normal">8 цифр: ДДММГГГГ</span>
                 </label>
                 <input
                   type="text"
+                  inputMode="numeric"
                   value={editingStudent.birthDate || ''}
-                  onChange={(e) => setEditingStudent({ ...editingStudent, birthDate: e.target.value })}
-                  placeholder="14.05.2016"
+                  onChange={(e) =>
+                    setEditingStudent({
+                      ...editingStudent,
+                      birthDate: e.target.value.replace(/\D/g, '').slice(0, 8)
+                    })
+                  }
+                  placeholder="14052016 (без точек)"
                   className="w-full px-3 py-2 bg-slate-50 border rounded-xl font-mono font-bold text-purple-900"
                 />
               </div>
@@ -741,7 +759,7 @@ export const StudentsAndClassesManager: React.FC = () => {
                     Карточки доступов для родителей
                   </h3>
                   <p className="text-xs text-slate-500">
-                    Логин — номер телефона, пароль — дата рождения ребенка
+                    Логин — номер телефона, пароль — дата рождения ребенка (8 цифр без точек)
                   </p>
                 </div>
               </div>
@@ -805,8 +823,10 @@ export const StudentsAndClassesManager: React.FC = () => {
                     </div>
                     <div className="w-px h-6 bg-slate-200 mx-1" />
                     <div>
-                      <span className="text-[10px] text-slate-400 block font-bold">Пароль (Д/Р):</span>
-                      <strong className="text-amber-800 font-mono">{st.birthDate || 'не указана'}</strong>
+                      <span className="text-[10px] text-slate-400 block font-bold">Пароль (8 цифр):</span>
+                      <strong className="text-amber-800 font-mono">
+                        {normalizeDate(st.birthDate || '') || 'не указан'}
+                      </strong>
                     </div>
                   </div>
                 </div>
@@ -851,7 +871,7 @@ export const StudentsAndClassesManager: React.FC = () => {
                   <tr>
                     <th className="p-2.5">ФИО ученика</th>
                     <th className="p-2.5">Класс</th>
-                    <th className="p-2.5">Д/Р (Пароль)</th>
+                    <th className="p-2.5">Д/Р (Пароль, 8 цифр)</th>
                     <th className="p-2.5">Родитель</th>
                     <th className="p-2.5">Телефон (Логин)</th>
                   </tr>

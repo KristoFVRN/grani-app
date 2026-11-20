@@ -64,7 +64,7 @@ export interface TwoStageHomework {
 export interface Student {
   id: string;
   name: string;
-  birthDate?: string; // e.g. "14.05.2016" -> password for parent
+  birthDate?: string; // e.g. "14052016" -> password for parent (ДДММГГГГ без точек)
   class: string; // Юридически: "Ступень познания 1 «Первооткрыватели»"
   stageId: string;
   avatar: string;

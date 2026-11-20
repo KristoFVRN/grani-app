@@ -74,15 +74,23 @@ export function normalizePhone(raw: string): string {
 
 export function normalizeDate(raw: string): string {
   if (!raw) return '';
-  const clean = raw.trim();
-  const digits = clean.replace(/\D/g, '');
-  if (digits.length === 8) {
-    const d = digits.slice(0, 2);
-    const m = digits.slice(2, 4);
-    const y = digits.slice(4, 8);
-    return `${d}.${m}.${y}`;
+  const clean = String(raw).trim();
+  if (!clean) return '';
+
+  const isoMatch = clean.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (isoMatch) {
+    return `${isoMatch[3]}${isoMatch[2]}${isoMatch[1]}`;
   }
-  return clean.replace(/[-/]/g, '.');
+
+  const sepMatch = clean.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{4})$/);
+  if (sepMatch) {
+    const d = sepMatch[1].padStart(2, '0');
+    const m = sepMatch[2].padStart(2, '0');
+    return `${d}${m}${sepMatch[3]}`;
+  }
+
+  const digits = clean.replace(/\D/g, '');
+  return digits || clean;
 }
 
 interface AppContextType {
@@ -224,6 +232,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const init = INITIAL_STUDENTS.find((x) => x.id === item.id);
         return {
           ...item,
+          birthDate: normalizeDate(item.birthDate || init?.birthDate || ''),
           dietaryNeeds: item.dietaryNeeds || init?.dietaryNeeds || 'Общий стол',
           stageId: item.stageId || init?.stageId || 'stage_1'
         };
@@ -349,7 +358,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const remote = await fetchSyncedState();
         if (remote && remote.state) {
           const st = remote.state as Record<string, any>;
-          if (st.students) setStudents(st.students);
+          if (st.students) {
+            setStudents(
+              (st.students as Student[]).map((item) => ({
+                ...item,
+                birthDate: normalizeDate(item.birthDate || '')
+              }))
+            );
+          }
           if (st.stages) setStages(st.stages);
           if (st.specialists) setSpecialists(st.specialists);
           if (st.bookings) setBookings(st.bookings);
@@ -417,9 +433,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       (u) =>
         u.login.toLowerCase() === rawLogin.toLowerCase() ||
         u.role === rawLogin ||
-        (u.phone && normalizePhone(u.phone) === normalizePhone(rawLogin))
+        (u.role !== 'parent' && u.phone && normalizePhone(u.phone) === normalizePhone(rawLogin))
     );
-    if (aliasUser && (!rawPass || rawPass === 'grani2026' || rawPass === 'admin' || rawPass === aliasUser.birthDate || aliasUser.role === rawLogin)) {
+    if (
+      aliasUser &&
+      (!rawPass ||
+        rawPass === 'grani2026' ||
+        rawPass === 'admin' ||
+        (aliasUser.birthDate && normalizeDate(rawPass) === normalizeDate(aliasUser.birthDate)) ||
+        aliasUser.role === rawLogin)
+    ) {
       setCurrentUser(aliasUser);
       setRoleState(aliasUser.role);
       if (aliasUser.studentId) setSelectedStudentId(aliasUser.studentId);
@@ -441,9 +464,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const studentBirthDateNorm = normalizeDate(matchedStudent.birthDate || '');
       const isPassValid =
         !rawPass ||
-        normDate === studentBirthDateNorm ||
-        rawPass === matchedStudent.birthDate ||
-        rawPass === matchedStudent.parentPassword ||
+        (studentBirthDateNorm !== '' && normDate === studentBirthDateNorm) ||
+        (!!matchedStudent.parentPassword && rawPass === matchedStudent.parentPassword) ||
         rawPass === '1234' ||
         rawPass === 'grani2026';
 
@@ -452,7 +474,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           id: `u_${matchedStudent.id}`,
           login: matchedStudent.parentPhone,
           phone: matchedStudent.parentPhone,
-          birthDate: matchedStudent.birthDate,
+          birthDate: studentBirthDateNorm || matchedStudent.birthDate,
           name: matchedStudent.parentName || `Родитель (${matchedStudent.name})`,
           role: 'parent',
           roleTitle: `Родитель (${matchedStudent.name})`,
@@ -468,7 +490,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       } else {
         return {
           success: false,
-          message: 'Неверная дата рождения ребенка. Введите дату в формате ДД.ММ.ГГГГ (например, 14.05.2016)'
+          message: 'Неверная дата рождения ребенка. Введите 8 цифр без точек в формате ДДММГГГГ (например, 14052016)'
         };
       }
     }
@@ -1149,11 +1171,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [currentUser, addNotification]);
 
   const addOrUpdateStudent = useCallback((student: Student) => {
+    const normalizedStudent: Student = {
+      ...student,
+      birthDate: normalizeDate(student.birthDate || '')
+    };
     setStudents((prev) => {
-      const exists = prev.some((s) => s.id === student.id);
-      return exists ? prev.map((s) => (s.id === student.id ? student : s)) : [...prev, student];
+      const exists = prev.some((s) => s.id === normalizedStudent.id);
+      return exists ? prev.map((s) => (s.id === normalizedStudent.id ? normalizedStudent : s)) : [...prev, normalizedStudent];
     });
-    addNotification(`Данные ребенка «${student.name}» сохранены!`);
+    addNotification(`Данные ребенка «${normalizedStudent.name}» сохранены!`);
   }, [addNotification]);
 
   const deleteStudent = useCallback((studentId: string) => {
@@ -1167,9 +1193,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [addNotification]);
 
   const batchAddStudents = useCallback((newStudents: Student[]) => {
+    const normalizedBatch = newStudents.map((s) => ({
+      ...s,
+      birthDate: normalizeDate(s.birthDate || '')
+    }));
     setStudents((prev) => {
       const updated = [...prev];
-      newStudents.forEach((newS) => {
+      normalizedBatch.forEach((newS) => {
         const idx = updated.findIndex((x) => x.id === newS.id || (x.name === newS.name && x.class === newS.class));
         if (idx >= 0) {
           updated[idx] = { ...updated[idx], ...newS };
@@ -1181,7 +1211,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       pushStateKey('students', updated).catch(() => {});
       return updated;
     });
-    addNotification(`Импортировано учеников: ${newStudents.length}`);
+    addNotification(`Импортировано учеников: ${normalizedBatch.length}`);
   }, [addNotification]);
 
   const addOrUpdateStaffMember = useCallback((staff: StaffMember) => {
