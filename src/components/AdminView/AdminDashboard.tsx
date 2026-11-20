@@ -1,16 +1,18 @@
 import React, { useState } from 'react';
 import { DayOverview } from './DayOverview';
+import { StudentsAndClassesManager } from './StudentsAndClassesManager';
 import { SuperAdminManager } from './SuperAdminManager';
 import { PresenceMonitor } from './PresenceMonitor';
 import { FinanceSummary } from './FinanceSummary';
 import { ScheduleAndMenuUploader } from './ScheduleAndMenuUploader';
-import { LayoutDashboard, ShieldCheck, Shield, DollarSign, CalendarCheck } from 'lucide-react';
+import { LayoutDashboard, Users, ShieldCheck, Shield, DollarSign, CalendarCheck } from 'lucide-react';
 
 export const AdminDashboard: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'overview' | 'superadmin' | 'presence' | 'finance' | 'schedule'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'classes' | 'superadmin' | 'presence' | 'finance' | 'schedule'>('overview');
 
   const tabs = [
     { id: 'overview', label: 'Сводка за день', icon: LayoutDashboard },
+    { id: 'classes', label: 'Классы & Ученики', icon: Users },
     { id: 'superadmin', label: 'Конструктор', icon: ShieldCheck },
     { id: 'presence', label: 'Монитор СКУД', icon: Shield },
     { id: 'finance', label: 'Финансы', icon: DollarSign },
@@ -46,6 +48,7 @@ export const AdminDashboard: React.FC = () => {
       {/* Main Tab Content */}
       <div className="p-3.5 pb-24">
         {activeTab === 'overview' && <DayOverview />}
+        {activeTab === 'classes' && <StudentsAndClassesManager />}
         {activeTab === 'superadmin' && <SuperAdminManager />}
         {activeTab === 'presence' && <PresenceMonitor />}
         {activeTab === 'finance' && <FinanceSummary />}

@@ -8,6 +8,8 @@ export interface AuthUser {
   roleTitle: string;
   stageName?: string;
   studentId?: string;
+  phone?: string;
+  birthDate?: string;
 }
 
 export type AttendanceStatus = 'present_ontime' | 'late' | 'absent_sick' | 'absent_parent';
@@ -62,6 +64,7 @@ export interface TwoStageHomework {
 export interface Student {
   id: string;
   name: string;
+  birthDate?: string; // e.g. "14.05.2016" -> password for parent
   class: string; // Юридически: "Ступень познания 1 «Первооткрыватели»"
   stageId: string;
   avatar: string;
@@ -74,7 +77,8 @@ export interface Student {
   homework: TwoStageHomework;
   attendanceStats: MonthlyAttendanceStats;
   parentName: string;
-  parentPhone: string;
+  parentPhone: string; // e.g. "+7 (903) 858-12-34" -> login for parent
+  parentPassword?: string;
   dietaryNeeds?: string; // Особенности питания / Аллергии (для кухни и куратора)
   parentAbsenceNotice?: {
     type: 'sick' | 'family' | 'late';
@@ -254,6 +258,10 @@ export interface StaffMember {
   checkInTime: string;
   location: string;
   phone: string;
+  login?: string;
+  password?: string;
+  userRole?: UserRole;
+  stageId?: string;
 }
 
 export interface ParentAlert {

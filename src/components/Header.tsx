@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { Bell, Phone, ChevronDown, Check, CheckCheck, X, User } from 'lucide-react';
+import { Bell, Phone, ChevronDown, Check, CheckCheck, X, User, LogOut, Eye } from 'lucide-react';
 import { AuthModal } from './AuthModal';
 
 export const Header: React.FC = () => {
   const {
     role,
+    setRole,
     currentUser,
+    logout,
     currentStudent,
     students,
     setSelectedStudentId,
@@ -20,6 +22,7 @@ export const Header: React.FC = () => {
   const [showStudentDropdown, setShowStudentDropdown] = useState(false);
   const [showAlerts, setShowAlerts] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showAdminPreview, setShowAdminPreview] = useState(false);
 
   const studentAlerts = parentAlerts.filter((a) => a.studentId === currentStudent?.id);
   const unreadCount = studentAlerts.filter((a) => !a.read).length;
@@ -109,19 +112,101 @@ export const Header: React.FC = () => {
               )}
             </button>
 
-            {/* User Profile / Auth Button */}
-            <button
-              onClick={() => setShowAuthModal(true)}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-white/15 hover:bg-white/25 border border-white/20 text-white text-xs font-semibold transition active:scale-95"
-              title="Авторизация / Смена пользователя"
+            {/* Admin Preview Mode Switcher (only for admin) */}
+            {currentUser?.role === 'admin' && (
+              <div className="relative">
+                <button
+                  onClick={() => setShowAdminPreview(!showAdminPreview)}
+                  className="flex items-center gap-1 px-2 py-1.5 rounded-xl bg-amber-400/20 hover:bg-amber-400/30 border border-amber-300/40 text-amber-200 text-xs font-bold transition"
+                  title="Режим предпросмотра ролей"
+                >
+                  <Eye className="w-3.5 h-3.5 text-amber-300" />
+                  <span className="hidden sm:inline text-[11px]">Вид</span>
+                </button>
+
+                {showAdminPreview && (
+                  <div className="absolute top-full right-0 mt-2 w-48 bg-[#1e1330] text-white rounded-2xl shadow-2xl border border-purple-400/30 p-2 z-50 space-y-1 text-xs">
+                    <div className="px-2 py-1 text-[10px] uppercase font-bold text-amber-300 border-b border-white/10">
+                      Режим предпросмотра:
+                    </div>
+                    <button
+                      onClick={() => {
+                        setRole('admin');
+                        setShowAdminPreview(false);
+                      }}
+                      className={`w-full text-left px-2.5 py-1.5 rounded-lg flex items-center justify-between ${
+                        role === 'admin' ? 'bg-[#4e1984] text-white font-bold' : 'hover:bg-white/10 text-purple-200'
+                      }`}
+                    >
+                      <span>Руководитель</span>
+                      {role === 'admin' && <Check className="w-3.5 h-3.5 text-amber-300" />}
+                    </button>
+                    <button
+                      onClick={() => {
+                        setRole('parent');
+                        setShowAdminPreview(false);
+                      }}
+                      className={`w-full text-left px-2.5 py-1.5 rounded-lg flex items-center justify-between ${
+                        role === 'parent' ? 'bg-[#4e1984] text-white font-bold' : 'hover:bg-white/10 text-purple-200'
+                      }`}
+                    >
+                      <span>Родитель</span>
+                      {role === 'parent' && <Check className="w-3.5 h-3.5 text-amber-300" />}
+                    </button>
+                    <button
+                      onClick={() => {
+                        setRole('curator');
+                        setShowAdminPreview(false);
+                      }}
+                      className={`w-full text-left px-2.5 py-1.5 rounded-lg flex items-center justify-between ${
+                        role === 'curator' ? 'bg-[#4e1984] text-white font-bold' : 'hover:bg-white/10 text-purple-200'
+                      }`}
+                    >
+                      <span>Куратор ступени</span>
+                      {role === 'curator' && <Check className="w-3.5 h-3.5 text-amber-300" />}
+                    </button>
+                    <button
+                      onClick={() => {
+                        setRole('extended_teacher');
+                        setShowAdminPreview(false);
+                      }}
+                      className={`w-full text-left px-2.5 py-1.5 rounded-lg flex items-center justify-between ${
+                        role === 'extended_teacher' ? 'bg-[#4e1984] text-white font-bold' : 'hover:bg-white/10 text-purple-200'
+                      }`}
+                    >
+                      <span>Педагог продленки</span>
+                      {role === 'extended_teacher' && <Check className="w-3.5 h-3.5 text-amber-300" />}
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* User Profile Info */}
+            <div
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-white/15 border border-white/20 text-white text-xs font-semibold relative"
+              title={currentUser?.roleTitle || 'Пользователь'}
             >
               <User className="w-3.5 h-3.5 text-amber-300" />
-              <span className="max-w-[70px] truncate hidden sm:inline">
-                {currentUser ? currentUser.name.split(' ')[0] : 'Вход'}
+              <span className="max-w-[85px] truncate">
+                {currentUser ? currentUser.name.split(' ')[0] : 'Гость'}
               </span>
-              {role === 'admin' && pendingBookingsCount > 0 && (
-                <span className="w-2 h-2 rounded-full bg-rose-400 animate-pulse" title="Новые заявки" />
+              {currentUser?.role === 'admin' && pendingBookingsCount > 0 && (
+                <span className="w-2 h-2 rounded-full bg-rose-400 animate-pulse" title={`Новых заявок: ${pendingBookingsCount}`} />
               )}
+            </div>
+
+            {/* Logout Button */}
+            <button
+              onClick={() => {
+                if (confirm('Вы действительно хотите выйти из приложения?')) {
+                  logout();
+                }
+              }}
+              className="p-2 rounded-xl bg-rose-500/20 hover:bg-rose-500/40 text-rose-200 transition"
+              title="Выйти из учетной записи"
+            >
+              <LogOut className="w-4 h-4 text-rose-300" />
             </button>
 
             {/* Notifications Dropdown */}

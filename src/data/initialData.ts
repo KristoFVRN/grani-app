@@ -19,6 +19,8 @@ export const INITIAL_USERS: AuthUser[] = [
   {
     id: 'u_parent',
     login: 'parent',
+    phone: '+7 (903) 858-12-34',
+    birthDate: '14.05.2016',
     name: 'Елена Грачева',
     role: 'parent',
     roleTitle: 'Родитель (мама Миши)',
@@ -28,6 +30,7 @@ export const INITIAL_USERS: AuthUser[] = [
   {
     id: 'u_curator',
     login: 'curator',
+    phone: '+7 (903) 858-00-01',
     name: 'Анна Сергеевна Воронова',
     role: 'curator',
     roleTitle: 'Куратор ступени познания 1',
@@ -36,6 +39,7 @@ export const INITIAL_USERS: AuthUser[] = [
   {
     id: 'u_extended',
     login: 'extended',
+    phone: '+7 (903) 858-00-02',
     name: 'Марина Игоревна Светлова',
     role: 'extended_teacher',
     roleTitle: 'Дежурный педагог продленки',
@@ -44,6 +48,7 @@ export const INITIAL_USERS: AuthUser[] = [
   {
     id: 'u_admin',
     login: 'admin',
+    phone: '+7 (999) 000-00-01',
     name: 'Ольга Николаевна Граничева',
     role: 'admin',
     roleTitle: 'Руководитель центра / Супер-админ',
@@ -257,6 +262,7 @@ export const INITIAL_STUDENTS: Student[] = [
   {
     id: 's1',
     name: 'Михаил Грачев',
+    birthDate: '14.05.2016',
     class: 'Ступень познания 1 «Первооткрыватели»',
     stageId: 'stage_1',
     avatar: 'https://images.unsplash.com/photo-1544717305-2782549b5136?auto=format&fit=crop&q=80&w=250',
@@ -342,6 +348,7 @@ export const INITIAL_STUDENTS: Student[] = [
   {
     id: 's2',
     name: 'Алиса Смирнова',
+    birthDate: '20.08.2016',
     class: 'Ступень познания 1 «Первооткрыватели»',
     stageId: 'stage_1',
     avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&q=80&w=250',
@@ -394,6 +401,7 @@ export const INITIAL_STUDENTS: Student[] = [
   {
     id: 's3',
     name: 'Даниил Морозов',
+    birthDate: '11.03.2015',
     class: 'Ступень познания 2 «Исследователи»',
     stageId: 'stage_2',
     avatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&q=80&w=250',
@@ -436,6 +444,7 @@ export const INITIAL_STUDENTS: Student[] = [
   {
     id: 's4',
     name: 'Арсений Иванов',
+    birthDate: '05.09.2016',
     class: 'Ступень познания 1 «Первооткрыватели»',
     stageId: 'stage_1',
     avatar: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&q=80&w=250',
@@ -477,6 +486,7 @@ export const INITIAL_STUDENTS: Student[] = [
   {
     id: 's5',
     name: 'Максим Петров',
+    birthDate: '12.11.2016',
     class: 'Ступень познания 1 «Первооткрыватели»',
     stageId: 'stage_1',
     avatar: 'https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?auto=format&fit=crop&q=80&w=250',
@@ -518,6 +528,7 @@ export const INITIAL_STUDENTS: Student[] = [
   {
     id: 's6',
     name: 'София Сидорова',
+    birthDate: '18.04.2015',
     class: 'Ступень познания 2 «Исследователи»',
     stageId: 'stage_2',
     avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=250',
@@ -559,6 +570,7 @@ export const INITIAL_STUDENTS: Student[] = [
   {
     id: 's7',
     name: 'Артем Козлов',
+    birthDate: '22.01.2016',
     class: 'Ступень познания 1 «Первооткрыватели»',
     stageId: 'stage_1',
     avatar: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&q=80&w=250',
@@ -600,6 +612,7 @@ export const INITIAL_STUDENTS: Student[] = [
   {
     id: 's8',
     name: 'Илья Васильев',
+    birthDate: '30.07.2015',
     class: 'Ступень познания 2 «Исследователи»',
     stageId: 'stage_2',
     avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=250',

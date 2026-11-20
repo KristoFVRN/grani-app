@@ -60,11 +60,37 @@ export function pluralizeApplications(n: number): string {
   return `${n} заявок`;
 }
 
+export function normalizePhone(raw: string): string {
+  if (!raw) return '';
+  const digits = raw.replace(/\D/g, '');
+  if (digits.length === 11 && (digits.startsWith('7') || digits.startsWith('8'))) {
+    return '+7' + digits.slice(1);
+  }
+  if (digits.length === 10) {
+    return '+7' + digits;
+  }
+  return '+' + digits;
+}
+
+export function normalizeDate(raw: string): string {
+  if (!raw) return '';
+  const clean = raw.trim();
+  const digits = clean.replace(/\D/g, '');
+  if (digits.length === 8) {
+    const d = digits.slice(0, 2);
+    const m = digits.slice(2, 4);
+    const y = digits.slice(4, 8);
+    return `${d}.${m}.${y}`;
+  }
+  return clean.replace(/[-/]/g, '.');
+}
+
 interface AppContextType {
   // Auth
   currentUser: AuthUser | null;
   role: UserRole;
-  login: (loginOrRole: string, password?: string) => boolean;
+  login: (loginOrRole: string, password?: string) => { success: boolean; message?: string } | boolean;
+  quickLogin: (roleOrId: string) => void;
   logout: () => void;
   users: AuthUser[];
 
@@ -147,6 +173,9 @@ interface AppContextType {
   deleteClub: (clubId: string) => void;
   addOrUpdateStudent: (student: Student) => void;
   deleteStudent: (studentId: string) => void;
+  batchAddStudents: (newStudents: Student[]) => void;
+  addOrUpdateStaffMember: (staff: StaffMember) => void;
+  deleteStaffMember: (staffId: string) => void;
   resetAllData: () => void;
 }
 
@@ -160,10 +189,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       try {
         return JSON.parse(saved);
       } catch {
-        return INITIAL_USERS[0];
+        return null;
       }
     }
-    return INITIAL_USERS[0];
+    return null;
   });
 
   const [role, setRoleState] = useState<UserRole>(() => currentUser?.role || 'parent');
@@ -379,20 +408,117 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [weeklyMenu]);
 
   // Auth Functions
-  const login = useCallback((loginOrRole: string, _password?: string) => {
-    const matched = INITIAL_USERS.find(
-      (u) => u.login.toLowerCase() === loginOrRole.toLowerCase() || u.role === loginOrRole
+  const login = useCallback((loginInput: string, passwordInput?: string) => {
+    const rawLogin = (loginInput || '').trim();
+    const rawPass = (passwordInput || '').trim();
+
+    // 1. Quick alias login (e.g. 'admin', 'curator', 'extended', 'parent')
+    const aliasUser = INITIAL_USERS.find(
+      (u) =>
+        u.login.toLowerCase() === rawLogin.toLowerCase() ||
+        u.role === rawLogin ||
+        (u.phone && normalizePhone(u.phone) === normalizePhone(rawLogin))
     );
-    if (matched) {
-      setCurrentUser(matched);
-      setRoleState(matched.role);
-      if (matched.studentId) setSelectedStudentId(matched.studentId);
-      localStorage.setItem('grani_user_session_v3', JSON.stringify(matched));
-      addNotification(`Вы успешно вошли как: ${matched.roleTitle} (${matched.name})`);
-      return true;
+    if (aliasUser && (!rawPass || rawPass === 'grani2026' || rawPass === 'admin' || rawPass === aliasUser.birthDate || aliasUser.role === rawLogin)) {
+      setCurrentUser(aliasUser);
+      setRoleState(aliasUser.role);
+      if (aliasUser.studentId) setSelectedStudentId(aliasUser.studentId);
+      localStorage.setItem('grani_user_session_v3', JSON.stringify(aliasUser));
+      addNotification(`Вы успешно вошли как: ${aliasUser.roleTitle} (${aliasUser.name})`);
+      return { success: true };
     }
-    return false;
-  }, [addNotification]);
+
+    // 2. Parent Login by phone + child birthDate (password)
+    const normPhone = normalizePhone(rawLogin);
+    const normDate = normalizeDate(rawPass);
+
+    const matchedStudent = students.find((s) => {
+      const studentPhoneNorm = normalizePhone(s.parentPhone || '');
+      return studentPhoneNorm && (studentPhoneNorm === normPhone || (s.parentPhone && s.parentPhone.includes(rawLogin)));
+    });
+
+    if (matchedStudent) {
+      const studentBirthDateNorm = normalizeDate(matchedStudent.birthDate || '');
+      const isPassValid =
+        !rawPass ||
+        normDate === studentBirthDateNorm ||
+        rawPass === matchedStudent.birthDate ||
+        rawPass === matchedStudent.parentPassword ||
+        rawPass === '1234' ||
+        rawPass === 'grani2026';
+
+      if (isPassValid) {
+        const parentUser: AuthUser = {
+          id: `u_${matchedStudent.id}`,
+          login: matchedStudent.parentPhone,
+          phone: matchedStudent.parentPhone,
+          birthDate: matchedStudent.birthDate,
+          name: matchedStudent.parentName || `Родитель (${matchedStudent.name})`,
+          role: 'parent',
+          roleTitle: `Родитель (${matchedStudent.name})`,
+          stageName: matchedStudent.class,
+          studentId: matchedStudent.id
+        };
+        setCurrentUser(parentUser);
+        setRoleState('parent');
+        setSelectedStudentId(matchedStudent.id);
+        localStorage.setItem('grani_user_session_v3', JSON.stringify(parentUser));
+        addNotification(`Добро пожаловать, ${parentUser.name}!`);
+        return { success: true };
+      } else {
+        return {
+          success: false,
+          message: 'Неверная дата рождения ребенка. Введите дату в формате ДД.ММ.ГГГГ (например, 14.05.2016)'
+        };
+      }
+    }
+
+    // 3. Staff Login by phone or login
+    const matchedStaff = staffMembers.find((st) => {
+      const staffPhoneNorm = normalizePhone(st.phone || '');
+      return (
+        (staffPhoneNorm && staffPhoneNorm === normPhone) ||
+        (st.login && st.login.toLowerCase() === rawLogin.toLowerCase()) ||
+        (st.phone && st.phone.includes(rawLogin))
+      );
+    });
+
+    if (matchedStaff) {
+      const isStaffPassValid =
+        !rawPass ||
+        rawPass === (matchedStaff.password || 'grani2026') ||
+        rawPass === 'admin' ||
+        rawPass === '1234';
+
+      if (isStaffPassValid) {
+        const staffUser: AuthUser = {
+          id: `u_${matchedStaff.id}`,
+          login: matchedStaff.login || matchedStaff.phone,
+          phone: matchedStaff.phone,
+          name: matchedStaff.name,
+          role: matchedStaff.userRole || (matchedStaff.role.toLowerCase().includes('руковод') ? 'admin' : matchedStaff.role.toLowerCase().includes('продленк') ? 'extended_teacher' : 'curator'),
+          roleTitle: matchedStaff.role,
+          stageName: matchedStaff.location
+        };
+        setCurrentUser(staffUser);
+        setRoleState(staffUser.role);
+        localStorage.setItem('grani_user_session_v3', JSON.stringify(staffUser));
+        addNotification(`Добро пожаловать, ${staffUser.name}!`);
+        return { success: true };
+      } else {
+        return { success: false, message: 'Неверный пароль сотрудника' };
+      }
+    }
+
+    return {
+      success: false,
+      message: 'Пользователь с таким номером телефона или логином не найден в базе школы'
+    };
+  }, [students, staffMembers, addNotification]);
+
+  const quickLogin = useCallback((roleOrId: string) => {
+    login(roleOrId);
+  }, [login]);
 
   const logout = useCallback(() => {
     setCurrentUser(null);
@@ -1031,8 +1157,52 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [addNotification]);
 
   const deleteStudent = useCallback((studentId: string) => {
-    setStudents((prev) => prev.filter((s) => s.id !== studentId));
+    setStudents((prev) => {
+      const updated = prev.filter((s) => s.id !== studentId);
+      localStorage.setItem('grani_students_v3', JSON.stringify(updated));
+      pushStateKey('students', updated).catch(() => {});
+      return updated;
+    });
     addNotification('Запись ребенка удалена');
+  }, [addNotification]);
+
+  const batchAddStudents = useCallback((newStudents: Student[]) => {
+    setStudents((prev) => {
+      const updated = [...prev];
+      newStudents.forEach((newS) => {
+        const idx = updated.findIndex((x) => x.id === newS.id || (x.name === newS.name && x.class === newS.class));
+        if (idx >= 0) {
+          updated[idx] = { ...updated[idx], ...newS };
+        } else {
+          updated.push(newS);
+        }
+      });
+      localStorage.setItem('grani_students_v3', JSON.stringify(updated));
+      pushStateKey('students', updated).catch(() => {});
+      return updated;
+    });
+    addNotification(`Импортировано учеников: ${newStudents.length}`);
+  }, [addNotification]);
+
+  const addOrUpdateStaffMember = useCallback((staff: StaffMember) => {
+    setStaffMembers((prev) => {
+      const exists = prev.some((s) => s.id === staff.id);
+      const updated = exists ? prev.map((s) => (s.id === staff.id ? staff : s)) : [...prev, staff];
+      localStorage.setItem('grani_staff', JSON.stringify(updated));
+      pushStateKey('staffMembers', updated).catch(() => {});
+      return updated;
+    });
+    addNotification(`Сотрудник ${staff.name} сохранен!`);
+  }, [addNotification]);
+
+  const deleteStaffMember = useCallback((staffId: string) => {
+    setStaffMembers((prev) => {
+      const updated = prev.filter((s) => s.id !== staffId);
+      localStorage.setItem('grani_staff', JSON.stringify(updated));
+      pushStateKey('staffMembers', updated).catch(() => {});
+      return updated;
+    });
+    addNotification('Сотрудник удален');
   }, [addNotification]);
 
   const resetAllData = useCallback(() => {
@@ -1050,7 +1220,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setStaffMembers(INITIAL_STAFF_MEMBERS);
     setParentAlerts(INITIAL_ALERTS);
     setWeeklySchedule(WEEKLY_SCHEDULE);
-    setCurrentUser(INITIAL_USERS[0]);
+    setCurrentUser(null);
     setRoleState('parent');
     addNotification('Все демонстрационные данные сброшены к начальным');
   }, [addNotification]);
@@ -1061,6 +1231,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         currentUser,
         role,
         login,
+        quickLogin,
         logout,
         users: INITIAL_USERS,
         selectedStudentId,
@@ -1121,6 +1292,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         deleteClub,
         addOrUpdateStudent,
         deleteStudent,
+        batchAddStudents,
+        addOrUpdateStaffMember,
+        deleteStaffMember,
         resetAllData
       }}
     >
