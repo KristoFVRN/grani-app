@@ -1,0 +1,45 @@
+@import "tailwindcss";
+
+@theme {
+  --color-grani-purple: #4e1984;
+  --color-grani-purple-dark: #3b1266;
+  --color-grani-purple-light: #6a28b0;
+  --color-grani-plum: #563b76;
+  --color-grani-cream: #f7f8ea;
+  --color-grani-cream-card: #ffffff;
+  --color-grani-cream-dark: #eceecc;
+  --color-grani-gold: #d99a2b;
+  --color-grani-green: #2e7d32;
+  --color-grani-green-light: #e8f5e9;
+  --color-grani-coral: #d32f2f;
+  --color-grani-coral-light: #ffebee;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: #0f0c1b;
+  font-family: 'Montserrat', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  color: #241c30;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(86, 59, 118, 0.2);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(78, 25, 132, 0.4);
+}
