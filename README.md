@@ -37,4 +37,4 @@
 
 Приложение оптимизировано для работы на **GitHub Pages** с автоматической сборкой через GitHub Actions:
 - Базовый путь: `./` (работает в любом подкаталоге)
-- URL развертывания: `https://krist0ffvrn.github.io/grani-app/`
+- URL развертывания: `https://kristofvrn.github.io/grani-app/`
