@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useApp, pluralizePortions } from '../../context/AppContext';
 import type { Student } from '../../types';
+import { PersonAvatar } from '../PersonAvatar';
+import { uploadAvatarImage } from '../../utils/imageUpload';
 import {
   Check,
   Clock,
@@ -8,12 +10,34 @@ import {
   UserX,
   Utensils,
   Users,
-  X
+  X,
+  Camera,
+  Loader2
 } from 'lucide-react';
 
 export const AttendanceManager: React.FC = () => {
-  const { students, stages, updateAttendance, addNotification } = useApp();
+  const { students, stages, updateAttendance, updateStudentAvatar, addNotification } = useApp();
   const [selectedStageId, setSelectedStageId] = useState<string>('stage_1');
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+  const [uploadTargetStudentId, setUploadTargetStudentId] = useState<string | null>(null);
+  const [uploadingStudentId, setUploadingStudentId] = useState<string | null>(null);
+
+  const handleAvatarFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    const studentId = uploadTargetStudentId;
+    if (!file || !studentId) return;
+    setUploadingStudentId(studentId);
+    try {
+      const { url } = await uploadAvatarImage(file);
+      updateStudentAvatar(studentId, url);
+    } catch (err) {
+      addNotification(err instanceof Error ? err.message : 'Не удалось загрузить фотографию');
+    } finally {
+      setUploadingStudentId(null);
+      setUploadTargetStudentId(null);
+      e.target.value = '';
+    }
+  };
 
   const [lateModalStudent, setLateModalStudent] = useState<Student | null>(null);
   const [lateTime, setLateTime] = useState('10:30');
@@ -138,6 +162,13 @@ export const AttendanceManager: React.FC = () => {
       </div>
 
       {/* Students Attendance List */}
+      <input
+        ref={avatarInputRef}
+        type="file"
+        accept="image/*"
+        onChange={handleAvatarFileChange}
+        className="hidden"
+      />
       <div className="space-y-2.5">
         {stageStudents.map((student) => {
           const isPresent = student.status === 'present_ontime';
@@ -158,11 +189,32 @@ export const AttendanceManager: React.FC = () => {
             >
               <div className="flex items-center justify-between gap-2 mb-2">
                 <div className="flex items-center gap-2.5 min-w-0">
-                  <img
-                    src={student.avatar}
-                    alt={student.name}
-                    className="w-9 h-9 rounded-full object-cover shrink-0 border border-slate-200"
-                  />
+                  <button
+                    type="button"
+                    disabled={uploadingStudentId === student.id}
+                    onClick={() => {
+                      setUploadTargetStudentId(student.id);
+                      avatarInputRef.current?.click();
+                    }}
+                    title="Загрузить / обновить фото ученика"
+                    className="relative shrink-0 active:scale-95 transition disabled:opacity-70"
+                  >
+                    <PersonAvatar
+                      src={student.avatar}
+                      name={student.name}
+                      className="w-9 h-9 rounded-full border border-slate-200"
+                      textClassName="text-xs"
+                    />
+                    {uploadingStudentId === student.id ? (
+                      <span className="absolute inset-0 rounded-full bg-black/50 flex items-center justify-center">
+                        <Loader2 className="w-3.5 h-3.5 text-white animate-spin" />
+                      </span>
+                    ) : (
+                      <span className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-[#4e1984] text-white flex items-center justify-center ring-1 ring-white shadow-2xs">
+                        <Camera className="w-2.5 h-2.5" />
+                      </span>
+                    )}
+                  </button>
                   <div className="min-w-0">
                     <div className="font-bold text-xs text-slate-900 truncate">
                       {student.name}

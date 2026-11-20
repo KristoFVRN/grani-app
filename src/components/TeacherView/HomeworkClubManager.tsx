@@ -11,6 +11,7 @@ import {
   ChevronUp
 } from 'lucide-react';
 import { AfterSchoolClubsDispatch } from './AfterSchoolClubsDispatch';
+import { PersonAvatar } from '../PersonAvatar';
 
 export const HomeworkClubManager: React.FC = () => {
   const { students, updateTwoStageHomework, currentUser, shiftHandoff, handoverShift } = useApp();
@@ -271,10 +272,11 @@ export const HomeworkClubManager: React.FC = () => {
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="flex items-center gap-2.5 min-w-0">
-                  <img
+                  <PersonAvatar
                     src={student.avatar}
-                    alt={student.name}
-                    className="w-10 h-10 rounded-full object-cover shrink-0 ring-1 ring-gray-200"
+                    name={student.name}
+                    className="w-10 h-10 rounded-full ring-1 ring-gray-200"
+                    textClassName="text-xs"
                   />
                   <div className="min-w-0">
                     <div className="font-bold text-xs text-slate-900 truncate">

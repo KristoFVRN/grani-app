@@ -2,6 +2,9 @@ import React, { useState, useRef } from 'react';
 import * as XLSX from 'xlsx';
 import { useApp, normalizeDate } from '../../context/AppContext';
 import type { Student, StaffMember } from '../../types';
+import { PersonAvatar } from '../PersonAvatar';
+import { AvatarUploader } from '../AvatarUploader';
+import { uploadAvatarImage } from '../../utils/imageUpload';
 import {
   Users,
   UserPlus,
@@ -19,7 +22,9 @@ import {
   X,
   AlertCircle,
   GraduationCap,
-  Utensils
+  Utensils,
+  Camera,
+  Loader2
 } from 'lucide-react';
 
 export const StudentsAndClassesManager: React.FC = () => {
@@ -28,6 +33,7 @@ export const StudentsAndClassesManager: React.FC = () => {
     stages,
     staffMembers,
     addOrUpdateStudent,
+    updateStudentAvatar,
     deleteStudent,
     batchAddStudents,
     addOrUpdateStaffMember,
@@ -52,6 +58,27 @@ export const StudentsAndClassesManager: React.FC = () => {
   const [isNewStaff, setIsNewStaff] = useState<boolean>(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const quickAvatarInputRef = useRef<HTMLInputElement>(null);
+  const [quickUploadStudentId, setQuickUploadStudentId] = useState<string | null>(null);
+  const [uploadingAvatarStudentId, setUploadingAvatarStudentId] = useState<string | null>(null);
+
+  const handleQuickAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    const studentId = quickUploadStudentId;
+    if (!file || !studentId) return;
+
+    setUploadingAvatarStudentId(studentId);
+    try {
+      const { url } = await uploadAvatarImage(file);
+      updateStudentAvatar(studentId, url);
+    } catch (err) {
+      addNotification(err instanceof Error ? err.message : 'Не удалось загрузить фотографию');
+    } finally {
+      setUploadingAvatarStudentId(null);
+      setQuickUploadStudentId(null);
+      e.target.value = '';
+    }
+  };
 
   // Filtered Students
   const filteredStudents = students.filter((s) => {
@@ -147,7 +174,7 @@ export const StudentsAndClassesManager: React.FC = () => {
           parentName: String(parentName).trim(),
           parentPhone: String(parentPhone).trim(),
           dietaryNeeds: String(dietaryNeeds).trim(),
-          avatar: 'https://images.unsplash.com/photo-1544717305-2782549b5136?auto=format&fit=crop&q=80&w=250',
+          avatar: '',
           status: 'present_ontime',
           arrivalTime: '08:30',
           curatorName: matchedStage?.curatorName || 'Анна Сергеевна Воронова',
@@ -215,7 +242,7 @@ export const StudentsAndClassesManager: React.FC = () => {
       parentName: editingStudent.parentName?.trim() || 'Родитель',
       parentPhone: editingStudent.parentPhone.trim(),
       dietaryNeeds: editingStudent.dietaryNeeds?.trim() || 'Общий стол',
-      avatar: editingStudent.avatar || 'https://images.unsplash.com/photo-1544717305-2782549b5136?auto=format&fit=crop&q=80&w=250',
+      avatar: editingStudent.avatar || '',
       status: editingStudent.status || 'present_ontime',
       arrivalTime: editingStudent.arrivalTime || '08:30',
       curatorName: matchedStage.curatorName,
@@ -324,6 +351,7 @@ export const StudentsAndClassesManager: React.FC = () => {
                 name: '',
                 stageId: selectedStageId === 'all' ? 'stage_1' : selectedStageId,
                 birthDate: '',
+                avatar: '',
                 parentName: '',
                 parentPhone: '+7 (9',
                 dietaryNeeds: 'Общий стол'
@@ -428,19 +456,48 @@ export const StudentsAndClassesManager: React.FC = () => {
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {filteredStudents.map((st) => (
-                <div
-                  key={st.id}
-                  className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs hover:shadow-md transition flex flex-col justify-between gap-3 relative overflow-hidden group"
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <img
-                        src={st.avatar}
-                        alt={st.name}
-                        className="w-11 h-11 rounded-2xl object-cover ring-2 ring-purple-100 shrink-0"
-                      />
+            <>
+              <input
+                ref={quickAvatarInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleQuickAvatarChange}
+                className="hidden"
+              />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {filteredStudents.map((st) => (
+                  <div
+                    key={st.id}
+                    className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs hover:shadow-md transition flex flex-col justify-between gap-3 relative overflow-hidden group"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <button
+                          type="button"
+                          disabled={uploadingAvatarStudentId === st.id}
+                          onClick={() => {
+                            setQuickUploadStudentId(st.id);
+                            quickAvatarInputRef.current?.click();
+                          }}
+                          title="Нажмите, чтобы загрузить или изменить фото ученика"
+                          className="relative shrink-0 active:scale-95 transition disabled:opacity-70"
+                        >
+                          <PersonAvatar
+                            src={st.avatar}
+                            name={st.name}
+                            className="w-11 h-11 rounded-2xl ring-2 ring-purple-100"
+                            textClassName="text-sm"
+                          />
+                          {uploadingAvatarStudentId === st.id ? (
+                            <span className="absolute inset-0 rounded-2xl bg-black/50 flex items-center justify-center">
+                              <Loader2 className="w-4 h-4 text-white animate-spin" />
+                            </span>
+                          ) : (
+                            <span className="absolute -bottom-1 -right-1 w-4.5 h-4.5 rounded-full bg-[#4e1984] text-white flex items-center justify-center ring-2 ring-white shadow-xs">
+                              <Camera className="w-2.5 h-2.5" />
+                            </span>
+                          )}
+                        </button>
                       <div className="min-w-0">
                         <div className="font-extrabold text-sm text-slate-900 truncate">{st.name}</div>
                         <div className="text-[11px] font-semibold text-[#4e1984] truncate">{st.class}</div>
@@ -524,7 +581,8 @@ export const StudentsAndClassesManager: React.FC = () => {
                   )}
                 </div>
               ))}
-            </div>
+              </div>
+            </>
           )}
         </div>
       )}
@@ -548,7 +606,7 @@ export const StudentsAndClassesManager: React.FC = () => {
                   password: 'grani2026',
                   status: 'inside',
                   checkInTime: '08:00',
-                  avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=200'
+                  avatar: ''
                 });
               }}
               className="px-3 py-1.5 bg-[#4e1984] text-white rounded-xl text-xs font-bold flex items-center gap-1.5"
@@ -566,10 +624,11 @@ export const StudentsAndClassesManager: React.FC = () => {
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex items-center gap-3 min-w-0">
-                    <img
+                    <PersonAvatar
                       src={st.avatar}
-                      alt={st.name}
-                      className="w-11 h-11 rounded-2xl object-cover ring-2 ring-purple-100 shrink-0"
+                      name={st.name}
+                      className="w-11 h-11 rounded-2xl ring-2 ring-purple-100"
+                      textClassName="text-sm"
                     />
                     <div className="min-w-0">
                       <div className="font-extrabold text-sm text-slate-900 truncate">{st.name}</div>
@@ -639,6 +698,13 @@ export const StudentsAndClassesManager: React.FC = () => {
             </div>
 
             <div className="space-y-3 text-xs">
+              <AvatarUploader
+                label="Фотография ученика"
+                value={editingStudent.avatar}
+                name={editingStudent.name || ''}
+                onChange={(url) => setEditingStudent({ ...editingStudent, avatar: url })}
+              />
+
               <div>
                 <label className="block font-bold text-slate-700 mb-1">ФИО ученика *</label>
                 <input
@@ -912,7 +978,7 @@ export const StudentsAndClassesManager: React.FC = () => {
       {/* MODAL 4: ADD / EDIT STAFF */}
       {editingStaff && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white w-full max-w-md rounded-3xl p-6 shadow-2xl space-y-4">
+          <div className="bg-white w-full max-w-md rounded-3xl p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <h3 className="font-extrabold text-base text-slate-900">
                 {isNewStaff ? 'Новый сотрудник' : 'Редактирование сотрудника'}
@@ -923,6 +989,13 @@ export const StudentsAndClassesManager: React.FC = () => {
             </div>
 
             <div className="space-y-3 text-xs">
+              <AvatarUploader
+                label="Фотография сотрудника"
+                value={editingStaff.avatar}
+                name={editingStaff.name || ''}
+                onChange={(url) => setEditingStaff({ ...editingStaff, avatar: url })}
+              />
+
               <div>
                 <label className="block font-bold text-slate-700 mb-1">ФИО сотрудника *</label>
                 <input

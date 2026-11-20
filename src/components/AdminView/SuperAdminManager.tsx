@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
+import { PersonAvatar } from '../PersonAvatar';
+import { AvatarUploader } from '../AvatarUploader';
 import {
   Layers,
   Sparkles,
@@ -849,7 +851,7 @@ export const SuperAdminManager: React.FC = () => {
                   name: 'Новый ученик',
                   class: 'Ступень познания 1 «Первооткрыватели»',
                   stageId: 'stage_1',
-                  avatar: 'https://images.unsplash.com/photo-1544717305-2782549b5136?auto=format&fit=crop&q=80&w=250',
+                  avatar: '',
                   status: 'present_ontime',
                   arrivalTime: '08:30',
                   curatorName: 'Анна Сергеевна',
@@ -886,10 +888,11 @@ export const SuperAdminManager: React.FC = () => {
                 className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-2xs flex items-center justify-between gap-3"
               >
                 <div className="flex items-center gap-2.5 min-w-0">
-                  <img
+                  <PersonAvatar
                     src={st.avatar}
-                    alt={st.name}
-                    className="w-9 h-9 rounded-full object-cover shrink-0"
+                    name={st.name}
+                    className="w-9 h-9 rounded-full"
+                    textClassName="text-xs"
                   />
                   <div className="min-w-0">
                     <div className="font-bold text-xs text-slate-900">{st.name}</div>
@@ -921,7 +924,7 @@ export const SuperAdminManager: React.FC = () => {
           {/* Student Editor Modal */}
           {editingStudent && (
             <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-              <div className="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3">
+              <div className="bg-white w-full max-w-sm rounded-3xl p-5 space-y-3 max-h-[90vh] overflow-y-auto">
                 <div className="flex items-center justify-between font-bold text-sm">
                   <span>Данные ребенка</span>
                   <button onClick={() => setEditingStudent(null)}>
@@ -929,6 +932,12 @@ export const SuperAdminManager: React.FC = () => {
                   </button>
                 </div>
                 <div className="space-y-2">
+                  <AvatarUploader
+                    label="Фотография ученика"
+                    value={editingStudent.avatar}
+                    name={editingStudent.name || ''}
+                    onChange={(url) => setEditingStudent({ ...editingStudent, avatar: url })}
+                  />
                   <div>
                     <label className="text-[10px] text-slate-400 font-bold block">ФИО ребенка</label>
                     <input

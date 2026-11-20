@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
+import { PersonAvatar } from '../PersonAvatar';
 import {
   Users,
   Shield,
@@ -164,10 +165,11 @@ export const PresenceMonitor: React.FC = () => {
             {students.map((student) => (
               <div key={student.id} className="py-2.5 flex items-center justify-between gap-2 text-xs">
                 <div className="flex items-center gap-2.5 min-w-0">
-                  <img
+                  <PersonAvatar
                     src={student.avatar}
-                    alt={student.name}
-                    className="w-8 h-8 rounded-full object-cover shrink-0"
+                    name={student.name}
+                    className="w-8 h-8 rounded-full"
+                    textClassName="text-[11px]"
                   />
                   <div className="min-w-0">
                     <div className="font-bold text-[#2d124d] truncate">{student.name}</div>
@@ -224,10 +226,11 @@ export const PresenceMonitor: React.FC = () => {
             {staffMembers.map((st) => (
               <div key={st.id} className="py-2.5 flex items-center justify-between gap-2 text-xs">
                 <div className="flex items-center gap-2.5 min-w-0">
-                  <img
+                  <PersonAvatar
                     src={st.avatar}
-                    alt={st.name}
-                    className="w-9 h-9 rounded-full object-cover shrink-0 ring-1 ring-purple-100"
+                    name={st.name}
+                    className="w-9 h-9 rounded-full ring-1 ring-purple-100"
+                    textClassName="text-xs"
                   />
                   <div className="min-w-0">
                     <div className="font-bold text-[#2d124d] truncate">{st.name}</div>

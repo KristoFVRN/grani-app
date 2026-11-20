@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import type {
   UserRole,
   AuthUser,
@@ -180,6 +180,7 @@ interface AppContextType {
   addOrUpdateClub: (club: ClubSubscription) => void;
   deleteClub: (clubId: string) => void;
   addOrUpdateStudent: (student: Student) => void;
+  updateStudentAvatar: (studentId: string, avatarUrl: string) => void;
   deleteStudent: (studentId: string) => void;
   batchAddStudents: (newStudents: Student[]) => void;
   addOrUpdateStaffMember: (staff: StaffMember) => void;
@@ -289,6 +290,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const [notifications, setNotifications] = useState<string[]>([]);
   const [isSynced, setIsSynced] = useState<boolean>(false);
+  const skipNextStudentsPushRef = useRef(true);
 
   // Shift Handoff in 15:00 (Requirement 2.4)
   const [shiftHandoff, setShiftHandoff] = useState<ShiftHandoff | null>(() => INITIAL_SHIFT_HANDOFF);
@@ -359,11 +361,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (remote && remote.state) {
           const st = remote.state as Record<string, any>;
           if (st.students) {
+            skipNextStudentsPushRef.current = true;
             setStudents(
-              (st.students as Student[]).map((item) => ({
-                ...item,
-                birthDate: normalizeDate(item.birthDate || '')
-              }))
+              (st.students as Student[]).map((item) => {
+                const init = INITIAL_STUDENTS.find((x) => x.id === item.id);
+                return {
+                  ...item,
+                  birthDate: normalizeDate(item.birthDate || init?.birthDate || ''),
+                  dietaryNeeds: item.dietaryNeeds || init?.dietaryNeeds || 'Общий стол',
+                  stageId: item.stageId || init?.stageId || 'stage_1'
+                };
+              })
             );
           }
           if (st.stages) setStages(st.stages);
@@ -390,6 +398,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Sync to local storage
   useEffect(() => {
     localStorage.setItem('grani_students_v3', JSON.stringify(students));
+    if (skipNextStudentsPushRef.current) {
+      skipNextStudentsPushRef.current = false;
+      return;
+    }
     pushStateKey('students', students).catch(() => {});
   }, [students]);
 
@@ -1175,14 +1187,40 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       ...student,
       birthDate: normalizeDate(student.birthDate || '')
     };
+    skipNextStudentsPushRef.current = false;
     setStudents((prev) => {
       const exists = prev.some((s) => s.id === normalizedStudent.id);
       return exists ? prev.map((s) => (s.id === normalizedStudent.id ? normalizedStudent : s)) : [...prev, normalizedStudent];
     });
+    setSubscriptions((prev) =>
+      prev.map((club) => ({
+        ...club,
+        enrolledStudents: (club.enrolledStudents || []).map((e) =>
+          e.studentId === normalizedStudent.id ? { ...e, avatar: normalizedStudent.avatar } : e
+        )
+      }))
+    );
     addNotification(`Данные ребенка «${normalizedStudent.name}» сохранены!`);
   }, [addNotification]);
 
+  const updateStudentAvatar = useCallback((studentId: string, avatarUrl: string) => {
+    skipNextStudentsPushRef.current = false;
+    setStudents((prev) =>
+      prev.map((s) => (s.id === studentId ? { ...s, avatar: avatarUrl } : s))
+    );
+    setSubscriptions((prev) =>
+      prev.map((club) => ({
+        ...club,
+        enrolledStudents: (club.enrolledStudents || []).map((e) =>
+          e.studentId === studentId ? { ...e, avatar: avatarUrl } : e
+        )
+      }))
+    );
+    addNotification(avatarUrl ? 'Фотография ученика обновлена!' : 'Фотография ученика удалена');
+  }, [addNotification]);
+
   const deleteStudent = useCallback((studentId: string) => {
+    skipNextStudentsPushRef.current = false;
     setStudents((prev) => {
       const updated = prev.filter((s) => s.id !== studentId);
       localStorage.setItem('grani_students_v3', JSON.stringify(updated));
@@ -1197,6 +1235,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       ...s,
       birthDate: normalizeDate(s.birthDate || '')
     }));
+    skipNextStudentsPushRef.current = false;
     setStudents((prev) => {
       const updated = [...prev];
       normalizedBatch.forEach((newS) => {
@@ -1321,6 +1360,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         addOrUpdateClub,
         deleteClub,
         addOrUpdateStudent,
+        updateStudentAvatar,
         deleteStudent,
         batchAddStudents,
         addOrUpdateStaffMember,

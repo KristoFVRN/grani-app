@@ -19,7 +19,14 @@ export function getApiBase(): string {
 
 export function resolveUploadUrl(url: string): string {
   if (!url) return '';
-  if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:')) {
+  if (url.startsWith('data:') || url.startsWith('blob:')) {
+    return url;
+  }
+  const lanMatch = url.match(/^https?:\/\/(?:192\.168\.\d+\.\d+|localhost|127\.0\.0\.1)(?::\d+)?(\/uploads\/.+)$/i);
+  if (lanMatch) {
+    return `${getApiBase()}${lanMatch[1]}`;
+  }
+  if (url.startsWith('http://') || url.startsWith('https://')) {
     return url;
   }
   const clean = url.startsWith('/') ? url : `/${url}`;
@@ -50,12 +57,15 @@ export async function pushStateKey(key: string, value: unknown): Promise<boolean
 }
 
 export async function uploadSchoolPhoto(file: File): Promise<string | null> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 6000);
   try {
     const formData = new FormData();
     formData.append('file', file);
     const res = await fetch(`${getApiBase()}/api/v2/upload`, {
       method: 'POST',
-      body: formData
+      body: formData,
+      signal: controller.signal
     });
     if (!res.ok) return null;
     const data = await res.json();
@@ -65,5 +75,7 @@ export async function uploadSchoolPhoto(file: File): Promise<string | null> {
     return null;
   } catch {
     return null;
+  } finally {
+    clearTimeout(timeoutId);
   }
 }

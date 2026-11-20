@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useApp } from '../context/AppContext';
-import { Bell, Phone, ChevronDown, Check, CheckCheck, X, User, LogOut, Eye } from 'lucide-react';
+import { Bell, Phone, ChevronDown, Check, CheckCheck, X, User, LogOut, Eye, Camera, Loader2 } from 'lucide-react';
 import { AuthModal } from './AuthModal';
+import { PersonAvatar } from './PersonAvatar';
+import { uploadAvatarImage } from '../utils/imageUpload';
 
 export const Header: React.FC = () => {
   const {
@@ -12,6 +14,7 @@ export const Header: React.FC = () => {
     currentStudent,
     students,
     setSelectedStudentId,
+    updateStudentAvatar,
     parentAlerts,
     markAlertRead,
     markAllAlertsRead,
@@ -23,6 +26,23 @@ export const Header: React.FC = () => {
   const [showAlerts, setShowAlerts] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showAdminPreview, setShowAdminPreview] = useState(false);
+  const [isUploadingChildPhoto, setIsUploadingChildPhoto] = useState(false);
+  const childPhotoInputRef = useRef<HTMLInputElement>(null);
+
+  const handleChildPhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !currentStudent) return;
+    setIsUploadingChildPhoto(true);
+    try {
+      const { url } = await uploadAvatarImage(file);
+      updateStudentAvatar(currentStudent.id, url);
+    } catch (err) {
+      addNotification(err instanceof Error ? err.message : 'Не удалось загрузить фотографию');
+    } finally {
+      setIsUploadingChildPhoto(false);
+      e.target.value = '';
+    }
+  };
 
   const studentAlerts = parentAlerts.filter((a) => a.studentId === currentStudent?.id);
   const unreadCount = studentAlerts.filter((a) => !a.read).length;
@@ -258,29 +278,53 @@ export const Header: React.FC = () => {
         {/* For Parent: Active Child Card & Switcher */}
         {role === 'parent' && currentStudent && (
           <div className="relative mt-2">
-            <button
-              onClick={() => setShowStudentDropdown(!showStudentDropdown)}
-              className="w-full bg-white/15 hover:bg-white/20 backdrop-blur-md rounded-2xl p-2.5 flex items-center justify-between border border-white/15 transition text-left"
-            >
-              <div className="flex items-center gap-3">
-                <div className="relative shrink-0">
-                  <img
-                    src={currentStudent.avatar}
-                    alt={currentStudent.name}
-                    className="w-11 h-11 rounded-full object-cover ring-2 ring-amber-300/70 shadow"
-                  />
-                  <span
-                    className={`absolute bottom-0 right-0 w-3 h-3 rounded-full ring-2 ring-[#4e1984] ${
-                      currentStudent.status === 'present_ontime'
-                        ? 'bg-emerald-400'
-                        : currentStudent.status === 'late'
-                        ? 'bg-amber-400'
-                        : currentStudent.status === 'absent_sick'
-                        ? 'bg-sky-400'
-                        : 'bg-rose-400'
-                    }`}
-                  />
-                </div>
+            <input
+              ref={childPhotoInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleChildPhotoUpload}
+              className="hidden"
+            />
+            <div className="w-full bg-white/15 hover:bg-white/20 backdrop-blur-md rounded-2xl p-2.5 flex items-center justify-between gap-2.5 border border-white/15 transition">
+              <button
+                type="button"
+                disabled={isUploadingChildPhoto}
+                onClick={() => childPhotoInputRef.current?.click()}
+                title="Нажмите, чтобы загрузить или обновить фото ребенка"
+                className="relative shrink-0 active:scale-95 transition disabled:opacity-70"
+              >
+                <PersonAvatar
+                  src={currentStudent.avatar}
+                  name={currentStudent.name}
+                  className="w-11 h-11 rounded-full ring-2 ring-amber-300/70 shadow"
+                  textClassName="text-sm"
+                />
+                {isUploadingChildPhoto && (
+                  <span className="absolute inset-0 rounded-full bg-black/50 flex items-center justify-center">
+                    <Loader2 className="w-4 h-4 text-white animate-spin" />
+                  </span>
+                )}
+                <span
+                  className={`absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full ring-2 ring-[#4e1984] ${
+                    currentStudent.status === 'present_ontime'
+                      ? 'bg-emerald-400'
+                      : currentStudent.status === 'late'
+                      ? 'bg-amber-400'
+                      : currentStudent.status === 'absent_sick'
+                      ? 'bg-sky-400'
+                      : 'bg-rose-400'
+                  }`}
+                />
+                <span className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-amber-400 text-[#241c30] flex items-center justify-center ring-2 ring-[#4e1984] shadow">
+                  <Camera className="w-2.5 h-2.5" />
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setShowStudentDropdown(!showStudentDropdown)}
+                className="flex-1 flex items-center justify-between gap-2 min-w-0 text-left"
+              >
                 <div className="min-w-0">
                   <div className="flex items-center gap-1.5 flex-wrap">
                     <span className="font-bold text-sm text-[#f7f8ea]">{currentStudent.name}</span>
@@ -300,12 +344,12 @@ export const Header: React.FC = () => {
                     </span>
                   </div>
                 </div>
-              </div>
-              <div className="flex items-center gap-1 text-white/70 text-xs font-medium pr-1">
-                <span>Сменить</span>
-                <ChevronDown className="w-3.5 h-3.5" />
-              </div>
-            </button>
+                <div className="flex items-center gap-1 text-white/70 text-xs font-medium pr-1 shrink-0">
+                  <span>Сменить</span>
+                  <ChevronDown className="w-3.5 h-3.5" />
+                </div>
+              </button>
+            </div>
 
             {/* Child Dropdown */}
             {showStudentDropdown && (
@@ -327,7 +371,7 @@ export const Header: React.FC = () => {
                       }`}
                     >
                       <div className="flex items-center gap-2">
-                        <img src={s.avatar} alt={s.name} className="w-7 h-7 rounded-full object-cover" />
+                        <PersonAvatar src={s.avatar} name={s.name} className="w-7 h-7 rounded-full" textClassName="text-[10px]" />
                         <div>
                           <div className="text-xs font-bold">{s.name}</div>
                           <div className="text-[10px] text-white/70">{s.class}</div>
