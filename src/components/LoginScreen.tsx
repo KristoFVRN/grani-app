@@ -8,16 +8,14 @@ import {
   Eye,
   EyeOff,
   LogIn,
-  Sparkles,
   HelpCircle,
   AlertCircle,
   GraduationCap,
-  Shield,
   Users
 } from 'lucide-react';
 
 export const LoginScreen: React.FC = () => {
-  const { login, quickLogin } = useApp();
+  const { login } = useApp();
   const [activeTab, setActiveTab] = useState<'parent' | 'staff'>('parent');
   
   // Parent Form
@@ -70,6 +68,10 @@ export const LoginScreen: React.FC = () => {
     e.preventDefault();
     if (!staffLogin.trim()) {
       setErrorMessage('Введите номер телефона или логин сотрудника');
+      return;
+    }
+    if (!staffPassword.trim()) {
+      setErrorMessage('Введите пароль сотрудника');
       return;
     }
 
@@ -245,7 +247,7 @@ export const LoginScreen: React.FC = () => {
                       setErrorMessage(null);
                       setStaffLogin(e.target.value);
                     }}
-                    placeholder="+7 (___) ... или admin / curator"
+                    placeholder="Введите телефон или логин"
                     className="w-full pl-10 pr-3.5 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-semibold text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#4e1984] focus:border-transparent transition"
                   />
                 </div>
@@ -266,7 +268,7 @@ export const LoginScreen: React.FC = () => {
                       setErrorMessage(null);
                       setStaffPassword(e.target.value);
                     }}
-                    placeholder="•••••••• (по умолчанию: grani2026)"
+                    placeholder="Введите пароль"
                     className="w-full pl-10 pr-10 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-semibold text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#4e1984] focus:border-transparent transition"
                   />
                   <button
@@ -276,13 +278,6 @@ export const LoginScreen: React.FC = () => {
                   >
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
-                </div>
-              </div>
-
-              <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200 text-[11px] text-slate-600 flex items-start gap-2">
-                <Shield className="w-4 h-4 text-purple-700 shrink-0 mt-0.5" />
-                <div className="leading-snug">
-                  Для входа руководителя: <strong>admin</strong> (пароль <strong>grani2026</strong>).
                 </div>
               </div>
 
@@ -296,72 +291,6 @@ export const LoginScreen: React.FC = () => {
               </button>
             </form>
           )}
-
-          {/* Quick Demo Login Cards for easy testing */}
-          <div className="mt-6 pt-5 border-t border-slate-100">
-            <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2.5">
-              <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-              <span>Быстрый тестовый вход в 1 клик</span>
-            </div>
-
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => quickLogin('admin')}
-                className="p-2.5 rounded-xl bg-purple-50 hover:bg-purple-100 text-left border border-purple-200/60 transition active:scale-95 flex items-center gap-2"
-              >
-                <div className="w-7 h-7 rounded-lg bg-[#241738] text-amber-300 flex items-center justify-center font-bold text-xs shrink-0">
-                  Р
-                </div>
-                <div className="min-w-0">
-                  <div className="font-extrabold text-xs text-purple-950 truncate">Руководитель</div>
-                  <div className="text-[10px] text-purple-700 truncate">Ольга Николаевна</div>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => quickLogin('parent')}
-                className="p-2.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-left border border-amber-200/60 transition active:scale-95 flex items-center gap-2"
-              >
-                <div className="w-7 h-7 rounded-lg bg-amber-500 text-white flex items-center justify-center font-bold text-xs shrink-0">
-                  М
-                </div>
-                <div className="min-w-0">
-                  <div className="font-extrabold text-xs text-amber-950 truncate">Родитель Миши</div>
-                  <div className="text-[10px] text-amber-800 truncate">Елена Грачева</div>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => quickLogin('curator')}
-                className="p-2.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-left border border-blue-200/60 transition active:scale-95 flex items-center gap-2"
-              >
-                <div className="w-7 h-7 rounded-lg bg-blue-700 text-white flex items-center justify-center font-bold text-xs shrink-0">
-                  К
-                </div>
-                <div className="min-w-0">
-                  <div className="font-extrabold text-xs text-blue-950 truncate">Куратор ступени 1</div>
-                  <div className="text-[10px] text-blue-700 truncate">Анна Сергеевна</div>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => quickLogin('extended')}
-                className="p-2.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-left border border-emerald-200/60 transition active:scale-95 flex items-center gap-2"
-              >
-                <div className="w-7 h-7 rounded-lg bg-emerald-700 text-white flex items-center justify-center font-bold text-xs shrink-0">
-                  П
-                </div>
-                <div className="min-w-0">
-                  <div className="font-extrabold text-xs text-emerald-950 truncate">Педагог продленки</div>
-                  <div className="text-[10px] text-emerald-700 truncate">Марина Игоревна</div>
-                </div>
-              </button>
-            </div>
-          </div>
         </div>
 
         {/* Footer info */}
